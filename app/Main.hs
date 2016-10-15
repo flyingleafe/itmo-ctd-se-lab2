@@ -1,8 +1,6 @@
 module Main where
 
-import           Data.Conduit
-import qualified Data.Conduit.Combinators as C
-import           Twitter.API
+import           Twitter.API.Conduit
 import           Twitter.OAuth
 
 myApp :: TwitterApp Unauthorized
@@ -15,6 +13,5 @@ main = do
     Left err  -> putStrLn $ "Authorization error: " ++ err
     Right app -> do
       putStrLn "Authorized successfully"
-      runConduit $ searchTweets app "#apple"
-        =$= C.take 50
-        =$= C.mapM_ print
+      lastHoursCounts <- countTweetsLastHours app "apple" 3
+      print lastHoursCounts

@@ -29,3 +29,10 @@ catchHTTPException action = join . first httpExceptionToString <$> try action
 
 parseCreatedAt :: Monad m => String -> m UTCTime
 parseCreatedAt = parseTimeM True defaultTimeLocale "%a %b %d %H:%M:%S %z %Y"
+
+subtractHours :: Int -> UTCTime -> UTCTime
+subtractHours n = addUTCTime (fromIntegral $ -n*3600)
+
+roundToHours :: UTCTime -> UTCTime
+roundToHours time = time { utctDayTime = secondsToDiffTime newSecs }
+  where newSecs = (round (utctDayTime time) `div` 3600) * 3600
