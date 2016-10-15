@@ -1,0 +1,68 @@
+name:                lab1
+version:             0.1.0.0
+synopsis:            Initial project template from stack
+description:         Please see README.md
+homepage:            https://github.com/githubuser/lab1#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Author name here
+maintainer:          example@example.com
+copyright:           2016 Author name here
+category:            Web
+build-type:          Simple
+-- extra-source-files:
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Twitter
+                     , Twitter.OAuth
+                     , Twitter.API
+                     , Twitter.Utils
+  build-depends:       base >= 4.7 && < 5
+                     , http-conduit
+                     , http-types >= 0.9
+                     , aeson
+                     , bytestring
+                     , base64-bytestring >= 1.0
+                     , transformers >= 0.4
+                     , conduit
+                     , conduit-combinators
+                     , data-default >= 0.5
+                     , time
+  default-language:    Haskell2010
+  default-extensions:  OverloadedStrings
+  ghc-options:         -Wall -O2
+
+executable twitter-graph
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , lab1
+                     , aeson
+                     , http-conduit
+                     , conduit
+                     , conduit-combinators
+                     , data-default >= 0.5
+                     , time
+  default-language:    Haskell2010
+  default-extensions:  OverloadedStrings
+  ghc-options:         -Wall -O2
+
+test-suite lab1-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Test.hs
+  other-modules:       Spec
+  build-depends:       base
+                     , http-conduit
+                     , aeson
+                     , lab1
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+  default-extensions:  OverloadedStrings
+
+source-repository head
+  type:     git
+  location: https://github.com/githubuser/lab1
