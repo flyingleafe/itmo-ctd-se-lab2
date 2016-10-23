@@ -13,5 +13,5 @@ main = do
     Left err  -> putStrLn $ "Authorization error: " ++ err
     Right app -> do
       putStrLn "Authorized successfully"
-      lastHoursCounts <- countTweetsLastHours app "apple" 3
+      lastHoursCounts <- countTweetsLastHours app "haskell" 3
       print lastHoursCounts

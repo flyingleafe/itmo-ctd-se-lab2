@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module Twitter.OAuth
   ( TwitterApp
   , Unauthorized
@@ -25,6 +26,7 @@ makeApp key secret = TwitterApp
   { consumerKey    = key
   , consumerSecret = secret
   , authToken      = error "Application is unauthorized yet!"
+  , backend = HTTPBackend
   }
 
 twitterHost :: ByteString
@@ -51,8 +53,8 @@ appOnlyAuthRequest app =
   $ setRequestBody "grant_type=client_credentials" defaultRequest
 
 authorizeAppOnly :: TwitterApp Unauthorized -> IO (Either String (TwitterApp Authorized))
-authorizeAppOnly app = catchHTTPException $ do
-  eresponse <- tryJsonRequest app $ appOnlyAuthRequest app
+authorizeAppOnly app@TwitterApp {..} = catchHTTPException $ do
+  eresponse <- tryJsonRequest backend $ appOnlyAuthRequest app
   return $ do
     response <- eresponse
     return $ app { authToken = getResponseBody response }

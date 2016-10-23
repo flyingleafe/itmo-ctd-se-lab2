@@ -2,6 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 module Twitter.API.Conduit
   ( searchTweets
+  , countTweetsPeriods
   , countTweetsLastHours
   , Query
   , Hashtag
@@ -16,7 +17,7 @@ import           Data.Monoid              ((<>))
 import           Data.ByteString.Char8    (ByteString)
 import           Data.Conduit
 import qualified Data.Conduit.Combinators as C
-import           Data.Time.Clock          (getCurrentTime)
+import           Data.Time.Clock          (UTCTime, getCurrentTime)
 
 import           Twitter
 import           Twitter.API
@@ -29,38 +30,36 @@ type CountPerPage = Maybe Int
 type MaxTweetID = Maybe Integer
 
 countTweetsLastHours :: MonadIO m => TwitterApp Authorized -> Hashtag -> Hours -> m [Int]
-countTweetsLastHours app tag n = do
-  curTime <- liftIO getCurrentTime
-  let bottomTime = subtractHours (n - 1) $ roundToHours curTime
+countTweetsLastHours app tag n = liftIO getCurrentTime >>= countTweetsPeriods app tag . backNHours n
 
-      accum [] tweet = [(roundToHours $ _createdAt tweet, 1)]
-      accum ((hour, m) : hs) tweet =
-        let curHour = roundToHours (_createdAt tweet)
-        in if curHour == hour
-           then (hour, m + 1) : hs
-           else (curHour, 1) : (hour, m) : hs
-
-  liftIO $ print bottomTime
+countTweetsPeriods :: MonadIO m => TwitterApp Authorized -> Hashtag -> [UTCTime] -> m [Int]
+countTweetsPeriods app tag periods = do
+  let minimumTime = last periods
+      accum p@([], _) _ = p
+      accum (hour : hs, counts) tweet
+        | _createdAt tweet >= hour = (hour : hs, incHead counts)
+        | otherwise                = accum (hs, 0 : counts) tweet
 
   pairs <- runConduit $ searchTweets app ("#" <> tag)
-    =$= C.takeWhile (\tweet -> _createdAt tweet > bottomTime)
-    =$= C.foldl accum []
+    =$= C.takeWhile (\tweet -> _createdAt tweet > minimumTime)
+    =$= C.foldl accum (periods, [0])
 
-  return $ reverse $ map snd pairs
+  return $ reverse $ snd pairs
 
 searchTweets :: MonadIO m => TwitterApp Authorized -> Query -> Producer m Tweet
 searchTweets app q = searchTweetsBatch app q Nothing Nothing =$= C.concat
 
-searchTweetsBatch :: MonadIO m =>
-                     TwitterApp Authorized
-                  -> Query
-                  -> CountPerPage
-                  -> MaxTweetID
-                  -> Producer m [Tweet]
+searchTweetsBatch
+  :: MonadIO m
+  => TwitterApp Authorized
+  -> Query
+  -> CountPerPage
+  -> MaxTweetID
+  -> Producer m [Tweet]
 searchTweetsBatch app q count maxId = do
   esearchRes <- call app APISearch (APISearchParams q count maxId Nothing)
   case esearchRes of
-    Left _ -> return ()
+    Left err -> liftIO $ putStrLn err
     Right (APISearchVal tweets) -> do
       yield tweets
 

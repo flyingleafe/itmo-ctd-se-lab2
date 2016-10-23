@@ -36,3 +36,11 @@ subtractHours n = addUTCTime (fromIntegral $ -n*3600)
 roundToHours :: UTCTime -> UTCTime
 roundToHours time = time { utctDayTime = secondsToDiffTime newSecs }
   where newSecs = (round (utctDayTime time) `div` 3600) * 3600
+
+backNHours :: Int -> UTCTime -> [UTCTime]
+backNHours n top = map (`subtractHours` roundedTop) [0..n-1]
+  where roundedTop = roundToHours top
+
+incHead :: Num a => [a] -> [a]
+incHead []       = [1]
+incHead (n : ns) = n + 1 : ns

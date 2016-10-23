@@ -2,23 +2,27 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE Rank2Types        #-}
 {-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeFamilies      #-}
 module Twitter.API where
 
+import           Control.Monad          (join)
 import           Control.Monad.IO.Class
 import           Data.Maybe             (maybeToList)
 
 import           Data.Aeson.Types
-import           Data.ByteString.Char8  (ByteString, pack)
+import           Data.ByteString.Char8  (ByteString, pack, unpack)
 import           Data.Default
 import           Data.Time.Clock        (UTCTime)
 import           Network.HTTP.Simple
 
+import           Twitter                (TwitterApp (..))
 import           Twitter.OAuth
 import           Twitter.Utils
 
 class QueryParams p where
   toQueryParams :: p -> [(ByteString, Maybe ByteString)]
+  fromQueryParams :: [(ByteString, Maybe ByteString)] -> Maybe p
 
 class (QueryParams (Params m), FromJSON (Val m)) => APIMethod m where
   data Params m :: *
@@ -35,7 +39,7 @@ makeRequest app m p =
   $ authorizedRequest app
 
 call :: (MonadIO m, APIMethod a) => TwitterApp Authorized -> a -> Params a -> m (Either String (Val a))
-call app m p = fmap getResponseBody <$> tryJsonRequest app (makeRequest app m p)
+call app@TwitterApp{..} m p = fmap getResponseBody <$> tryJsonRequest backend (makeRequest app m p)
 
 callSafe :: APIMethod a => TwitterApp Authorized -> a -> Params a -> IO (Either String (Val a))
 callSafe app m p = catchHTTPException $ call app m p
@@ -56,7 +60,7 @@ instance APIMethod APISearch where
     , _count   :: Maybe Int
     , _maxId   :: Maybe Integer
     , _sinceId :: Maybe Integer
-    }
+    } deriving (Show)
 
   newtype Val APISearch = APISearchVal [Tweet] deriving Show
 
@@ -69,6 +73,13 @@ instance QueryParams (Params APISearch) where
                     , maybeToList $ intP "since_id" <$> _sinceId p
                     , maybeToList $ intP "max_id" <$> _maxId p]
     where intP str n = (str, Just $ pack $ show n)
+
+  fromQueryParams params = APISearchParams
+                           <$> join (lookup "q" params)
+                           <*> parseLookup "count" params
+                           <*> parseLookup "max_id" params
+                           <*> parseLookup "since_id" params
+    where parseLookup k p = return $ lookup k p >>= fmap (read . unpack)
 
 instance Default (Params APISearch) where
   def = APISearchParams { _query   = error "default"

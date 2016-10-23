@@ -1,3 +1,7 @@
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE GADTs                     #-}
+{-# LANGUAGE Rank2Types                #-}
+{-# LANGUAGE RankNTypes                #-}
 module Twitter where
 
 import           Control.Monad              (guard)
@@ -19,10 +23,11 @@ instance FromJSON Credential where
     token <- o .: "access_token"
     return $ Credential $ BS.pack token
 
-data TwitterApp a = TwitterApp
+data TwitterApp a = forall b . APIBackend b => TwitterApp
   { consumerKey    :: ByteString
   , consumerSecret :: ByteString
   , authToken      :: Credential
+  , backend        :: b
   }
 
 -- Phantom types to encode authorized/unauthorized states of application
@@ -36,5 +41,7 @@ instance AuthorizationState Authorized
 class APIBackend b where
   getAPIAnswer :: MonadIO m => b -> Request -> m (Response BSL.ByteString)
 
-instance AuthorizationState s => APIBackend (TwitterApp s) where
+data HTTPBackend = HTTPBackend
+
+instance APIBackend HTTPBackend where
   getAPIAnswer _ = httpLBS
